@@ -13,7 +13,7 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API Route for Gemini AI Chat
+  // API Route for AI chat
   app.post("/api/chat", async (req, res) => {
     const { message, history, systemPrompt } = req.body;
 
@@ -26,7 +26,7 @@ async function startServer() {
 
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const model = genAI.getGenerativeModel({ model: "text-bison-001" });
 
       // Build conversation for Gemini
       let conversationHistory = "";

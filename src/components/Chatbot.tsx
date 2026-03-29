@@ -1,20 +1,48 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, Bot } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
-import { personalInfo, skills, projects } from '../lib/data';
+import { personalInfo, skills, projects, education } from '../lib/data';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
 
-const SYSTEM_PROMPT = `You are an AI assistant for Muhammad Ather Ali's portfolio website.
-Ather is a Frontend Developer and Agentic AI Builder from Karachi, Pakistan.
-Your goal is to answer questions about Ather's skills, projects, and education.
-Skills: ${JSON.stringify(skills)}
-Projects: ${JSON.stringify(projects)}
-Contact: ${JSON.stringify(personalInfo)}
+const getBotReply = (message: string) => {
+  const text = message.toLowerCase();
+  const contains = (keywords: string[]) => keywords.some(keyword => text.includes(keyword));
 
-Be professional, friendly, and concise. If a user wants to leave a message or contact Ather, tell them they can type their message here and you will help them send it.
-If they say something like "I want to send an email" or "contact Ather", ask for their name, email, and message.
-Once you have all three (Name, Email, Message), tell them you are sending it.`;
+  if (contains(['hi', 'hello', 'hey', 'assalamu', 'salaam'])) {
+    return "Hello! I'm Ather's portfolio assistant. Ask me about his skills, projects, education, or how to contact him.";
+  }
+
+  if (contains(['skill', 'skills', 'technology', 'tech', 'frontend', 'ai', 'tools'])) {
+    return `Ather's skills include:\nFrontend: ${skills.frontend.join(', ')}\nAI: ${skills.ai.join(', ')}\nTools: ${skills.tools.join(', ')}`;
+  }
+
+  if (contains(['project', 'projects', 'work', 'portfolio'])) {
+    return `Some of Ather's projects:\n${projects.map(project => `${project.title} — ${project.description}`).join('\n')}`;
+  }
+
+  if (contains(['education', 'school', 'university', 'degree', 'certificate', 'study'])) {
+    return `Ather's education and certificates:\n${education.map(item => `${item.institution} — ${item.degree} (${item.period})`).join('\n')}`;
+  }
+
+  if (contains(['contact', 'email', 'message', 'reach', 'hire'])) {
+    return `You can contact Ather at ${personalInfo.email}.\nLinkedIn: ${personalInfo.linkedin}\nGitHub: ${personalInfo.github}`;
+  }
+
+  if (contains(['location', 'karachi', 'pakistan'])) {
+    return `Ather is based in ${personalInfo.location}.`;
+  }
+
+  if (contains(['about', 'summary', 'experience', 'what do you do', 'who are you'])) {
+    return personalInfo.summary;
+  }
+
+  if (contains(['thanks', 'thank you', 'thank you very much', 'thx'])) {
+    return 'You are welcome! Feel free to ask another question about Ather.';
+  }
+
+  return "I'm a portfolio chatbot. I can answer questions about Ather's skills, projects, education, location, and contact details. Please ask one of those.";
+};
 
 interface Message {
   role: 'user' | 'bot';
@@ -46,60 +74,20 @@ export const Chatbot: React.FC = () => {
     }
   }, [isOpen]);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    const updatedMessages = [...messages, { role: 'user', text: userMessage }];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
-    try {
-      // Call the server-side API endpoint
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          history: messages,
-          systemPrompt: SYSTEM_PROMPT
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response from AI');
-      }
-
-      const botText = data.response || "I'm sorry, I couldn't process that.";
+    const botText = getBotReply(userMessage);
+    setTimeout(() => {
       setMessages(prev => [...prev, { role: 'bot', text: botText }]);
-
-      // Check if the AI is trying to send an email (heuristic)
-      if (botText.toLowerCase().includes("sending") && (botText.toLowerCase().includes("email") || botText.toLowerCase().includes("message"))) {
-        const lastFew = messages.slice(-5).map(m => m.text).join(' ');
-        const emailMatch = lastFew.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-
-        if (emailMatch) {
-          await fetch('/api/contact', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: "Chatbot User",
-              email: emailMatch[0],
-              message: userMessage
-            })
-          });
-        }
-      }
-
-    } catch (error: any) {
-      console.error("Chatbot error:", error);
-      const errorMessage = error.message || "Oops, I'm having some trouble connecting. Please try again later!";
-      setMessages(prev => [...prev, { role: 'bot', text: `Error: ${errorMessage}` }]);
-    } finally {
       setIsLoading(false);
-    }
+    }, 300);
   };
 
   return (
